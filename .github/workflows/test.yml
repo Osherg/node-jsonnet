@@ -18,6 +18,12 @@ jobs:
     - uses: actions/checkout@v2
       with:
         submodules: recursive
+    - uses: actions/cache@v2
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-npm-
     - name: Install
       run: |
         if type apt-get >/dev/null; then
@@ -70,10 +76,10 @@ jobs:
         github-token: ${{ secrets.github_token }}
         parallel-finished: true
 
-  lint:
-    runs-on: ubuntu-20.04
+  dtslint:
+    runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - uses: actions/cache@v1
       with:
         path: /home/runner/.dts
@@ -82,7 +88,42 @@ jobs:
           ${{ runner.os }}-dtslint-
     - name: Install
       run: npm install --no-save "@types/node@$(node -p 'process.versions.node.split(".")[0]')"
-    - name: Lint
+    - name: Version
       run: |
         npx dtslint --version
+    - name: Run dtslint
+      run: |
         npx dtslint types
+
+  clang-tidy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        clang_version: [11]
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - uses: actions/cache@v2
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-npm-
+    - uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node }}
+    - name: Install
+      run: sudo apt-get install -y --no-install-recommends clang-tidy-${{matrix.clang_version}}
+    - name: Build
+      run: npm ci
+      env:
+        CC: clang-${{matrix.clang_version}}
+        CXX: clang++-${{matrix.clang_version}}
+        CMAKE_BUILD_PARALLEL_LEVEL: '4'
+    - name: Version
+      run: |
+        clang-tidy-${{matrix.clang_version}} --version
+    - name: Run clang-tidy
+      run: |
+        run-clang-tidy-${{matrix.clang_version}}

@@ -80,7 +80,7 @@ namespace nodejsonnet {
       env, vm, std::make_unique<JsonnetWorker::EvaluateFileOp>(std::move(filename)));
     auto const promise = worker->Promise();
     worker->Queue();
-    return promise;
+    return promise;  // NOLINT(clang-analyzer-cplusplus.NewDeleteLeaks): worker deletes itself
   }
 
   Napi::Value Jsonnet::evaluateSnippet(const Napi::CallbackInfo &info) {
@@ -93,7 +93,7 @@ namespace nodejsonnet {
       std::make_unique<JsonnetWorker::EvaluateSnippetOp>(std::move(snippet), std::move(filename)));
     auto const promise = worker->Promise();
     worker->Queue();
-    return promise;
+    return promise;  // NOLINT(clang-analyzer-cplusplus.NewDeleteLeaks): worker deletes itself
   }
 
   Napi::Value Jsonnet::evaluateFileMulti(const Napi::CallbackInfo &info) {
@@ -105,7 +105,7 @@ namespace nodejsonnet {
       env, vm, std::make_unique<JsonnetWorker::EvaluateFileMultiOp>(std::move(filename)));
     auto const promise = worker->Promise();
     worker->Queue();
-    return promise;
+    return promise;  // NOLINT(clang-analyzer-cplusplus.NewDeleteLeaks): worker deletes itself
   }
 
   Napi::Value Jsonnet::evaluateSnippetMulti(const Napi::CallbackInfo &info) {
@@ -119,7 +119,7 @@ namespace nodejsonnet {
         std::move(snippet), std::move(filename)));
     auto const promise = worker->Promise();
     worker->Queue();
-    return promise;
+    return promise;  // NOLINT(clang-analyzer-cplusplus.NewDeleteLeaks): worker deletes itself
   }
 
   Napi::Value Jsonnet::evaluateFileStream(const Napi::CallbackInfo &info) {
@@ -131,7 +131,7 @@ namespace nodejsonnet {
       env, vm, std::make_unique<JsonnetWorker::EvaluateFileStreamOp>(std::move(filename)));
     auto const promise = worker->Promise();
     worker->Queue();
-    return promise;
+    return promise;  // NOLINT(clang-analyzer-cplusplus.NewDeleteLeaks): worker deletes itself
   }
 
   Napi::Value Jsonnet::evaluateSnippetStream(const Napi::CallbackInfo &info) {
@@ -145,7 +145,7 @@ namespace nodejsonnet {
         std::move(snippet), std::move(filename)));
     auto const promise = worker->Promise();
     worker->Queue();
-    return promise;
+    return promise;  // NOLINT(clang-analyzer-cplusplus.NewDeleteLeaks): worker deletes itself
   }
 
   Napi::Value Jsonnet::extString(const Napi::CallbackInfo &info) {
@@ -238,9 +238,10 @@ namespace nodejsonnet {
       auto const &fun = cb.fun;
       auto const &params = cb.params;
 
+      auto callback = std::make_shared<JsonnetNativeCallback>(env, fun.Value());
       vm->nativeCallback(
         name,
-        [callback = std::make_shared<JsonnetNativeCallback>(env, fun.Value())](
+        [callback = std::move(callback)](
           std::shared_ptr<JsonnetVm> vm, std::vector<JsonnetJsonValue const *> args) {
           return callback->call(std::move(vm), std::move(args));
         },
